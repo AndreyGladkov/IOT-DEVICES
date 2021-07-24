@@ -9,7 +9,7 @@
 #include <EEPROM.h>
 
 uint16_t lastPosition = 0;
-uint16_t lastDirection = 0;
+uint8_t lastDirection = 0;
 
 const uint8_t TABLE_UP_PIN = 3;
 const uint8_t TABLE_DOWN_PIN = 4;
@@ -82,7 +82,7 @@ void handleI2CRequest() {
       Wire.write((const uint8_t *) & lastPosition, 2);
       break;
     case I2C_CMD_READ_DIRECTION:
-      Wire.write((const uint8_t *) & lastDirection, 2);
+      Wire.write(lastDirection);
       break;
     default:
       break;
@@ -91,9 +91,12 @@ void handleI2CRequest() {
 
 void handleI2CReceive(int numBytes) {
   uint8_t command = Wire.read();
-  lastDirection = 0;
 
   switch (command) {
+    case I2C_CMD_READ_POSITIONS:
+    case I2C_CMD_READ_DIRECTION:
+      i2cReadCommand = command;
+      break;
     case I2C_CMD_MOVE_UP:
       lastDirection = UP;
       break;
@@ -114,10 +117,6 @@ void handleI2CReceive(int numBytes) {
       i2cMemoryCommand = command;
       DIRECTION nextDirection = getNextDirection(command == I2C_CMD_MOVE_MEMORY_DOWN ? memoryDown: memoryUp);
       lastDirection = nextDirection;
-      break;
-    case I2C_CMD_READ_POSITIONS:
-    case I2C_CMD_READ_DIRECTION:
-      i2cReadCommand = command;
       break;
     default:
       break;
@@ -146,37 +145,6 @@ DIRECTION getNextDirection(uint16_t targetPosition) {
   }
 
   return distance > 0 ? DOWN : UP;
-}
-
-void setup() {
-  Serial.begin(9600);
-  while (!Serial) {;};
-
-  hardware_clock::setup();
-  lin_processor::setup();
-
-  Wire.begin(I2C_ADDRESS);
-  Wire.onRequest(handleI2CRequest);
-  Wire.onReceive(handleI2CReceive);
-
-  pinMode(TABLE_UP_PIN, OUTPUT);
-  pinMode(TABLE_DOWN_PIN, OUTPUT);
-
-  EEPROM.get(MEMORY_ADDRESS_DOWN, memoryDown);
-  EEPROM.get(MEMORY_ADDRESS_UP, memoryUp);
-}
-
-void loop() {
-  system_clock::loop();
-  LinFrame frame;
-
-  if (lin_processor::readNextFrame(&frame)) {
-    processLINFrame(frame);
-  }
-
-  if (checkEdgeCases()) {
-    tableDirection(I2C_CMD_MOVE_STOP);
-  }
 }
 
 void tableDirection(I2CCommand direction) {
@@ -245,4 +213,36 @@ boolean checkEdgeCases() {
   }
 
   return false;
+}
+
+void setup() {
+  Serial.begin(9600);
+  while (!Serial) {;};
+
+  hardware_clock::setup();
+  lin_processor::setup();
+
+  Wire.begin(I2C_ADDRESS);
+  Wire.onRequest(handleI2CRequest);
+  Wire.onReceive(handleI2CReceive);
+
+  pinMode(TABLE_UP_PIN, OUTPUT);
+  pinMode(TABLE_DOWN_PIN, OUTPUT);
+
+  EEPROM.get(MEMORY_ADDRESS_DOWN, memoryDown);
+  EEPROM.get(MEMORY_ADDRESS_UP, memoryUp);
+}
+
+void loop() {
+  system_clock::loop();
+  LinFrame frame;
+
+  if (lin_processor::readNextFrame(&frame)) {
+    processLINFrame(frame);
+  }
+
+  if (checkEdgeCases()) {
+    tableDirection(I2C_CMD_MOVE_STOP);
+    lastDirection = STOP;
+  }
 }
