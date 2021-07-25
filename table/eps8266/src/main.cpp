@@ -8,7 +8,7 @@
 
 #define NAMES C(UP)C(DOWN)C(STOP)C(MEMORY_UP)C(MEMORY_DOWN)C(RECORD_DOWN)C(RECORD_UP)C(AUTO_MODE_ON)C(AUTO_MODE_OFF)C(TOGGLE)
 #define C(x) x,
-enum direction { NAMES LENGTH };
+enum tableCMD { NAMES LENGTH };
 #undef C
 #define C(x) #x,    
 const char * const TABLE_CMD[] = { NAMES };
@@ -70,6 +70,7 @@ void sendState(uint8_t);
 void processDirection();
 void processPosition();
 void applyPayload(String);
+void sendI2CCommand(I2CCommand cmd);
 
 bool waitForI2CBytesAvailable(int waitForNumBytes) {
   unsigned long waitForI2CBytesTimeout = millis() + WAIT_FOR_I2C_BYTES_TIMEOUT_MS;
@@ -101,7 +102,7 @@ void initWiFi() {
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght) {
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
   switch (type) {
     case WStype_CONNECTED:
       processDirection();
@@ -123,11 +124,7 @@ void initWebSocket() {
 
 void applyPayload(String payload) {
   if (payload == TABLE_CMD[TOGGLE] && AUTO_MODE_ENABLED) {
-    if (LAST_TOGGLE_STATE) {
-      sendDirectionToTable(I2C_CMD_MOVE_MEMORY_DOWN);
-    } else {
-      sendDirectionToTable(I2C_CMD_MOVE_MEMORY_UP);
-    }
+    sendDirectionToTable(LAST_TOGGLE_STATE ? I2C_CMD_MOVE_MEMORY_DOWN: I2C_CMD_MOVE_MEMORY_UP);
     LAST_TOGGLE_STATE = !LAST_DIRECTION;
   } else if (payload == TABLE_CMD[UP]) {
     sendDirectionToTable(I2C_CMD_MOVE_UP);
@@ -136,35 +133,32 @@ void applyPayload(String payload) {
   } else if (payload == TABLE_CMD[STOP]) {
     sendDirectionToTable(I2C_CMD_MOVE_STOP);
   } else if(payload == TABLE_CMD[RECORD_DOWN]) {
-    Wire.beginTransmission(I2C_ADDRESS);
-    Wire.write(I2C_CMD_MEMORY_DOWN);
-    Wire.endTransmission();
+    sendI2CCommand(I2C_CMD_MEMORY_DOWN);
   } else if (payload == TABLE_CMD[RECORD_UP]) {
-    Wire.beginTransmission(I2C_ADDRESS);
-    Wire.write(I2C_CMD_MEMORY_UP);
-    Wire.endTransmission();
+    sendI2CCommand(I2C_CMD_MEMORY_UP);
   } else if (payload == TABLE_CMD[MEMORY_DOWN]) {
     LAST_DIRECTION = DOWN;
-    Wire.beginTransmission(I2C_ADDRESS);
-    Wire.write(I2C_CMD_MOVE_MEMORY_DOWN);
-    Wire.endTransmission();
+    sendI2CCommand(I2C_CMD_MOVE_MEMORY_DOWN);
   } else if(payload == TABLE_CMD[MEMORY_UP]) {
     LAST_DIRECTION = UP;
-    Wire.beginTransmission(I2C_ADDRESS);
-    Wire.write(I2C_CMD_MOVE_MEMORY_UP);
-    Wire.endTransmission();
+    sendI2CCommand(I2C_CMD_MOVE_MEMORY_UP);
   } else if (payload == TABLE_CMD[AUTO_MODE_OFF]) {
     AUTO_MODE_ENABLED = false;
-    sendState(false);
   } else if (payload == TABLE_CMD[AUTO_MODE_ON]) {
     AUTO_MODE_ENABLED = true;
-    sendState(false);
   }
+
+  sendState(false);
+}
+
+void sendI2CCommand(I2CCommand cmd) {
+  Wire.beginTransmission(I2C_ADDRESS);
+  Wire.write(cmd);
+  Wire.endTransmission();
 }
 
 void sendDirectionToTable(I2CCommand command) {
-  switch (command)
-  {
+  switch (command) {
   case I2C_CMD_MOVE_STOP:
     LAST_DIRECTION = STOP;
     break;
@@ -179,10 +173,8 @@ void sendDirectionToTable(I2CCommand command) {
   default:
     break;
   }
-  Wire.beginTransmission(I2C_ADDRESS);
-  Wire.write(command);
-  Wire.endTransmission();
-  sendState(false);
+
+  sendI2CCommand(command);
 }
 
 uint16_t prevHeight = 0;
@@ -205,24 +197,21 @@ void sendState(uint8_t checkHeight) {
 }
 
 void processPosition() {
-    Wire.beginTransmission(I2C_ADDRESS);
-    Wire.write(I2C_CMD_READ_POSITIONS);
-    Wire.endTransmission();
-    Wire.requestFrom(I2C_ADDRESS, 2);
-    if (waitForI2CBytesAvailable(2)) {
-      position = Wire.read() + (Wire.read() << 8);
-    } 
+  sendI2CCommand(I2C_CMD_READ_POSITIONS);
+  Wire.requestFrom(I2C_ADDRESS, 2);
+  if (waitForI2CBytesAvailable(2)) {
+    position = Wire.read() + (Wire.read() << 8);
+  } 
 }
 
 void processDirection() {
-    Wire.beginTransmission(I2C_ADDRESS);
-    Wire.write(I2C_CMD_READ_DIRECTION);
-    Wire.endTransmission();
-    Wire.requestFrom(I2C_ADDRESS, 1);
-    if (waitForI2CBytesAvailable(1)) {
-      direction = Wire.read();
-      processPosition();
-    }
+  sendI2CCommand(I2C_CMD_READ_DIRECTION);
+  Wire.beginTransmission(I2C_ADDRESS);
+  Wire.requestFrom(I2C_ADDRESS, 1);
+  if (waitForI2CBytesAvailable(1)) {
+    direction = Wire.read();
+    processPosition();
+  }
 }
 
 void setup() {
