@@ -1,0 +1,6 @@
+.buttonGroup {
+    display: inline-flex;
+    background: #d2cfc5;
+    padding: 2px;
+    border-radius: 3px;
+}

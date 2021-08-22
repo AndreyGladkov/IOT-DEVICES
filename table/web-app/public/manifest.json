@@ -1,0 +1,20 @@
+{
+  "short_name": "table-controls",
+  "name": "table controls",
+  "manifest_version": 2,
+  "version": "0.1.0",
+  "icons": {
+    "16": "img/icon16.png",
+    "32": "img/icon32.png",
+    "48": "img/icon48.png",
+    "128": "img/icon128.png"
+  },
+  "browser_action": {
+    "default_popup": "index.html"
+  },
+  "permissions": ["alarms"],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  }
+}

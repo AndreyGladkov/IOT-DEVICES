@@ -1,0 +1,49 @@
+.buttonWrapper {
+    display: flex;
+    flex-direction: column;
+    padding: 1px;
+    font-size: 12px;
+    color: #555555;
+}
+
+.button,
+.buttonPressed {
+    outline: none;
+    background: linear-gradient(#e6e4d7, #ebe7e0);
+    padding: 5px;
+    border-radius: 3px;
+    border: 0;
+    margin-right: 1px;
+    box-shadow: 0 0 2px #343231;
+}
+
+.button span,
+.buttonPressed span {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(#d8d1c2, #fefefe);
+    border: 1px solid #fefefe;
+    width: 34px;
+    height: 34px;
+    border-radius: 68px;
+    box-shadow: inset 0px -3px 9px -1px #fefefe;
+}
+
+.buttonPressed {
+    box-shadow: none;
+}
+
+.buttonPressed span:after {
+    display: inline-block;
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 8px;
+    box-shadow: inset 0px 0px 3px 1px #d86726;
+    background: #ebb492;
+}
+
+.button:last-child {
+    margin-right: 0;
+}

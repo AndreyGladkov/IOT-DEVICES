@@ -1,0 +1,13 @@
+.hint,
+.hintHide {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 11px;
+    opacity: 1;
+    transition: opacity ease-in-out 250ms;
+}
+
+.hintHide {
+    opacity: 0;
+}
